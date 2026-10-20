@@ -40,37 +40,46 @@ field mapping, multi-select, workflow memory, and change previews.
 The right-hand shared configuration panel controls inherited prompts and enables/disables AI.
 Mocks return fixed examples; arbitrary prompt engineering needs a live backend.
 
-## Use a real backend
+## Use GPT-6 Luna
 
-The playground deliberately contains no model-provider credentials or SDK. Keep keys in your own
-backend. That backend should serve `POST /api/ai` and implement the library's `AIRequest` →
-`AIResponse` contract. It must support the request actions and response shapes used by the examples.
+A local server adapter is included for **`gpt-6-luna`**, using the OpenAI Responses API. The API key
+stays in the Vite server process and is never sent to the browser or included in the frontend build.
 
 ```sh
-cp .env.example .env
-# Set AI_BACKEND_URL=http://127.0.0.1:3000 in .env, then restart the dev server.
-npm run dev
+cp .env.example .env.local
 ```
 
-Toggle **Use /api/ai endpoint** in the shared configuration panel. The Vite development server
-proxies requests to `/api/ai` on that backend origin. It does not provide an AI backend itself.
-This proxy is development-only; production hosting needs its own API routing and authentication.
-Never put secrets in `VITE_*` variables.
+Paste your key into `.env.local`:
 
-Requests include `action`, `text`, `prompt`, optional `instruction`, and selected `context`.
-Responses contain `text` and optional structured `data`. For change previews, return:
-
-```json
-{
-  "text": "",
-  "data": {
-    "changes": [{ "field": "category", "value": "Billing", "reason": "This is a charge issue." }]
-  }
-}
+```env
+OPENAI_API_KEY=your-key-here
+OPENAI_MODEL=gpt-6-luna
 ```
 
-The library README bundled in the dependency documents the other component contracts. Also see
-[the library repository](https://github.com/AndrewTaoWen/AI-Components).
+Restart `npm run dev`, open the playground, and enable **Use /api/ai endpoint** in the shared
+configuration panel. The panel shows the configured model and whether a key is present. Mock mode
+remains the default so opening the app does not trigger paid requests.
+
+Live actions incur OpenAI API charges. Luna's standard short-context text rates, checked October 20,
+2026, are $0.10 per million input tokens and $0.50 per million output tokens. At 1,000 input and
+200 billed output tokens per action, 1,000 actions would cost approximately $0.20 (excluding cache,
+tools, and other adjustments). See [current model pricing](https://developers.openai.com/api/docs/models/gpt-6-luna).
+Autocomplete may call the model as you type; disable **AI capabilities** or use mock mode when you
+want to experiment without paid calls. The adapter uses reasoning effort `none`, caps each response
+at 2,048 output tokens, and disables response storage with `store: false`.
+
+Structured outputs cover forms, selections, search/filter criteria, dates, mappings, and multi-field
+suggestions. Writing and autocomplete return plain text. Server input limits, same-origin localhost
+checks, cancellation, a 45-second timeout, and a four-request concurrency limit are included. This
+is a local testing adapter; add deployment authentication and rate limits before hosting it publicly.
+The local API also works with `npm run preview`; a static-only deployment needs a separate backend.
+
+### Bring another backend
+
+Set `AI_BACKEND_URL=http://127.0.0.1:3000` in `.env.local` to override the OpenAI adapter in development.
+That backend should serve `POST /api/ai`, accepting the library's `AIRequest` and returning `AIResponse`.
+The proxy is development-only. The library README bundled in the dependency documents the request
+and response contracts. Never put secrets in `VITE_*` variables or commit `.env.local`.
 
 ## Library snapshot and updates
 

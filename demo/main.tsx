@@ -1,12 +1,7 @@
-import { useState } from 'react';
-import {
-  AIProvider,
-  AIInput,
-  AITextarea,
-  AISearch,
-  createFetchTransport,
-} from '@ai-components/react';
+import { useEffect, useState } from 'react';
+import { AIProvider, AIInput, AITextarea, AISearch } from '@ai-components/react';
 import { demoTransport } from './mock.js';
+import { liveTransport } from './live-transport.js';
 import { FormFillExample, SelectExample } from './extensions.js';
 import { componentExamples, type ComponentExample } from './examples/registry.js';
 import '@ai-components/react/styles.css';
@@ -76,13 +71,29 @@ const invoices = [
   { id: 'INV-1046', customer: 'Acme', amount: 780, status: 'paid' },
   { id: 'INV-1045', customer: 'Northwind', amount: 925, status: 'unpaid' },
 ];
-const liveTransport = createFetchTransport('/api/ai');
 export default function App() {
   const [tab, setTab] = useState<PlaygroundTab>('search');
   const activeTab = playgroundTabs[tab];
   const ExtraExample = componentExamples[tab]?.Component;
   const [basePrompt, setBasePrompt] = useState('Be helpful, clear, and concise.');
   const [live, setLive] = useState(false);
+  const [backend, setBackend] = useState<{ configured: boolean; model: string } | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/ai/status', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const status = await response.json();
+        if (
+          !controller.signal.aborted &&
+          typeof status.configured === 'boolean' &&
+          typeof status.model === 'string'
+        )
+          setBackend(status);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
   const [enabled, setEnabled] = useState(true);
   const [query, setQuery] = useState('unpaid invoices over $500');
   const [filters, setFilters] = useState<Filters | null>(null);
@@ -293,12 +304,24 @@ export default function App() {
                 />
               </label>
               <div className="note">
-                <strong>{live ? 'Bring your model' : 'No API key needed'}</strong>
+                <strong>{live ? (backend?.model ?? 'Live backend') : 'No API key needed'}</strong>
                 <p>
                   {live
-                    ? 'Connect the server handler described in the README. This playground does not run an API server.'
+                    ? backend
+                      ? backend.configured
+                        ? 'API key configured on the local server. Live actions send requests to OpenAI and incur API charges.'
+                        : 'Paste your key into OPENAI_API_KEY in .env.local, then restart npm run dev. The key stays on the server.'
+                      : 'Using your custom backend at /api/ai. See the README for setup.'
                     : 'Sample responses are deterministic, not model-generated. The mock recognizes paid/unpaid, “over $N,” and Acme. Prompt changes select concise or longer sample drafts.'}
                 </p>
+                {!live && backend && (
+                  <p>
+                    {backend.model}:{' '}
+                    {backend.configured
+                      ? 'key configured — enable the endpoint toggle to use it.'
+                      : 'add OPENAI_API_KEY to .env.local, then restart.'}
+                  </p>
+                )}
               </div>
             </section>
           </div>

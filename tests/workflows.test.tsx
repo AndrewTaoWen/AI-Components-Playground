@@ -5,6 +5,7 @@ import App from '../demo/main.js';
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 async function runMock() {
   await act(async () => {
@@ -60,4 +61,27 @@ it('shares accepted customer memory with a separate writing control', async () =
   expect(
     (screen.getByRole('textbox', { name: 'Customer reply' }) as HTMLTextAreaElement).value,
   ).toContain('Alex Chen');
+});
+
+it('shows the selected model and explains missing-key failures in live mode', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string) =>
+      input.endsWith('/status')
+        ? Response.json({ configured: false, model: 'gpt-6-luna' })
+        : Response.json({ error: 'Key missing' }, { status: 503 }),
+    ),
+  );
+  await act(async () => {
+    render(<App />);
+  });
+  expect(screen.getByText(/gpt-6-luna: add OPENAI_API_KEY/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Use /api/ai endpoint' }));
+  expect(screen.getByText('gpt-6-luna')).toBeTruthy();
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }));
+  });
+  expect(
+    screen.getByText('Add OPENAI_API_KEY to .env.local, then restart npm run dev.'),
+  ).toBeTruthy();
 });

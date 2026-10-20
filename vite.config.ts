@@ -1,13 +1,19 @@
 import { defineConfig } from 'vitest/config';
 import { loadEnv } from 'vite';
+import { localAIPlugin } from './server/local-api.js';
 export default defineConfig(({ mode }) => {
-  // A developer-supplied backend implements the library's AIRequest/AIResponse contract.
-  // Credentials belong on that backend, never in VITE_* variables or browser inputs.
-  const { AI_BACKEND_URL } = loadEnv(mode, process.cwd(), 'AI_');
+  const env = loadEnv(mode, process.cwd(), '');
+  const external = env.AI_BACKEND_URL;
   return {
-    server: AI_BACKEND_URL
-      ? { proxy: { '/api/ai': { target: AI_BACKEND_URL, changeOrigin: true } } }
-      : {},
-    test: { environment: 'jsdom', include: ['tests/**/*.test.tsx'], restoreMocks: true },
+    plugins: external
+      ? []
+      : [
+          localAIPlugin({
+            apiKey: env.OPENAI_API_KEY ?? '',
+            model: env.OPENAI_MODEL || 'gpt-6-luna',
+          }),
+        ],
+    server: external ? { proxy: { '/api/ai': { target: external, changeOrigin: true } } } : {},
+    test: { environment: 'jsdom', include: ['tests/**/*.test.ts*'], restoreMocks: true },
   };
 });
