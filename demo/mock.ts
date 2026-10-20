@@ -1,0 +1,145 @@
+import type { AITransport } from '@ai-components/react';
+/** Deterministic sample responses. This is deliberately not an LLM. */
+export const demoTransport: AITransport = {
+  async generate(request, { signal }) {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        signal.removeEventListener('abort', abort);
+        resolve();
+      }, 500);
+      function abort() {
+        clearTimeout(timer);
+        reject(new DOMException('Aborted', 'AbortError'));
+      }
+      if (signal.aborted) abort();
+      else signal.addEventListener('abort', abort, { once: true });
+    });
+    const recipeContext = request.context?._ai as
+      | { recipe?: string; borrowed?: { customer?: { name?: string; company?: string } } }
+      | undefined;
+    if (recipeContext?.recipe === 'support.triage') {
+      const customer = recipeContext.borrowed?.customer;
+      return {
+        text: '',
+        data: {
+          changes: [
+            {
+              field: 'category',
+              value: 'Billing',
+              reason: 'The request concerns a duplicate subscription charge.',
+            },
+            {
+              field: 'priority',
+              value: 'High',
+              reason: 'A duplicate charge needs a timely review.',
+            },
+            {
+              field: 'reply',
+              value: `Hi ${customer?.name ?? 'there'}, we’ll review the duplicate charge and follow up with you.`,
+              reason: 'Acknowledge the issue without promising a refund.',
+            },
+          ],
+        },
+      };
+    }
+    if (recipeContext?.recipe === 'support.reply') {
+      const customer = recipeContext.borrowed?.customer;
+      return {
+        text: `Hi ${customer?.name ?? 'there'}, thanks for reaching out${customer?.company ? ` from ${customer.company}` : ''}. We’ll review your request and help with the next steps.`,
+      };
+    }
+    if (request.action === 'select') {
+      if (request.context?.selectionMode === 'multi')
+        return {
+          text: '',
+          data: {
+            values: /design/i.test(request.text)
+              ? ['maya', 'noah']
+              : /engineer/i.test(request.text)
+                ? ['emma']
+                : [],
+          },
+        };
+      if (request.context?.selected) {
+        const text = request.text.toLowerCase();
+        return {
+          text: '',
+          data: {
+            values: [
+              /invoice|bill|charged/.test(text) ? 'billing' : '',
+              /login|log in/.test(text) ? 'account' : '',
+              /urgent/.test(text) ? 'urgent' : '',
+            ].filter(Boolean),
+          },
+        };
+      }
+      const query = request.text.toLowerCase();
+      const value = /bill|pay|invoice|money/.test(query)
+        ? 'finance'
+        : /login|log in|account|technical/.test(query)
+          ? 'support'
+          : /sales|product|subscription/.test(query)
+            ? 'sales'
+            : null;
+      return { text: '', data: { values: value ? [value] : [] } };
+    }
+    if (request.action === 'extract') {
+      if (request.context?.mapping)
+        return {
+          text: '',
+          data: {
+            mappings: [
+              { source: 'Client Email', target: 'email' },
+              { source: 'Full Name', target: 'name' },
+              { source: 'Organization', target: 'company' },
+            ],
+          },
+        };
+      if (request.context?.dateInput)
+        return {
+          text: '',
+          data: { date: '2026-10-23', time: '15:00', timeZone: 'America/Toronto' },
+        };
+      const data: Record<string, string> = {};
+      for (const key of ['name', 'email', 'company']) {
+        const value = request.text.match(new RegExp(`^${key}:\\s*(.+)$`, 'im'))?.[1]?.trim();
+        if (value) data[key] = value;
+      }
+      return { text: '', data };
+    }
+    if (request.action === 'search') {
+      if (request.context?.fields) {
+        const filters = [];
+        if (/unpaid|paid/i.test(request.text))
+          filters.push({
+            field: 'status',
+            operator: 'equals',
+            value: /unpaid/i.test(request.text) ? 'unpaid' : 'paid',
+          });
+        const amount = request.text.match(/over\s*\$?(\d+)/i);
+        if (amount)
+          filters.push({ field: 'amount', operator: 'greater than', value: Number(amount[1]) });
+        return { text: '', data: { filters } };
+      }
+      const lower = request.text.toLowerCase();
+      const amount = lower.match(/(?:over|above|more than|>)\s*\$?(\d+)/);
+      return {
+        text: '',
+        data: {
+          status: lower.includes('unpaid') ? 'unpaid' : lower.includes('paid') ? 'paid' : null,
+          minAmount: amount ? Number(amount[1]) : null,
+          customer: lower.includes('acme') ? 'Acme' : null,
+        },
+      };
+    }
+    if (request.action === 'complete')
+      return { text: ' and let me know if you have any questions.' };
+    const concise =
+      /short|concise/i.test(request.instruction ?? '') || /concise/i.test(request.prompt);
+    return {
+      text: concise
+        ? 'Thanks for reaching out! We’ll review this and get back to you shortly.'
+        : 'Thanks for reaching out. We’re happy to help and will take a closer look at your request. Please share any additional details so we can find the best next step together.',
+    };
+  },
+};
