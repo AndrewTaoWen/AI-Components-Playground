@@ -15,7 +15,10 @@ export const demoTransport: AITransport = {
       else signal.addEventListener('abort', abort, { once: true });
     });
     const recipeContext = request.context?._ai as
-      | { recipe?: string; borrowed?: { customer?: { name?: string; company?: string } } }
+      | {
+          recipe?: string;
+          borrowed?: { customer?: { name?: string; company?: string; issue?: string } };
+        }
       | undefined;
     if (recipeContext?.recipe === 'support.triage') {
       const customer = recipeContext.borrowed?.customer;
@@ -45,7 +48,7 @@ export const demoTransport: AITransport = {
     if (recipeContext?.recipe === 'support.reply') {
       const customer = recipeContext.borrowed?.customer;
       return {
-        text: `Hi ${customer?.name ?? 'there'}, thanks for reaching out${customer?.company ? ` from ${customer.company}` : ''}. We’ll review your request and help with the next steps.`,
+        text: `Hi ${customer?.name ?? 'there'}, thanks for reaching out${customer?.company ? ` from ${customer.company}` : ''}.${customer?.issue ? ` You mentioned: ${customer.issue}` : ''} We’ll review your request and help with the next steps.`,
       };
     }
     if (request.action === 'select') {

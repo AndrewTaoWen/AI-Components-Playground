@@ -116,3 +116,25 @@ npm run format:check
 Consumer integration tests exercise shared memory and selective acceptance/undo against the packaged
 library. GitHub Actions runs the same checks. `npm run preview` serves the production frontend build
 on port 5180; mock mode also works there.
+
+## Support workflow: a second application of the shared primitives
+
+Select **Support workflow** in the playground. Accept a customer/company/request, use **Help me
+write → Generate draft → Use draft** to review a grounded reply, and open **Review follow-up tasks**.
+Choose task additions, apply, dismiss, or undo before subsequent edits. Adding a manual follow-up
+while reviewing exercises revision rejection. The reply and next-move inspectors show selected
+customer facts, accepted actions, task revisions, and expected downstream use.
+
+This example uses the same packaged `createPersistentAIMemory`, prompt recipes, `useAIPrediction`,
+`useAIAction`, `AIActionReview`, and `AIContextInspector` as Folio. The support policy lives in
+`demo/support-policy.ts`; it is independent of Folio's notes/checklist rules. Accepted customer data,
+reply text, task state, and outcomes persist under the dedicated browser key
+`ai-components-playground:support:v1`. No key is stored there. Pending execution/undo controls live
+in the mounted hook; the example's single-tab revision checks simulate an application transaction.
+A production support app needs an authoritative backend with authorization, atomic revisions and
+durable idempotency. The local prediction policy makes no model call; explicit writing assistance
+uses whichever mock/live transport the playground has selected. Mock remains the default.
+
+![Support follow-up action review](docs/support-shared-review.jpg)
+
+![Inspecting the selected customer and accepted actions](docs/support-shared-context.jpg)

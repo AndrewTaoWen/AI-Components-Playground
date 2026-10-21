@@ -448,3 +448,40 @@ footer {
     gap: 12px;
   }
 }
+
+.support-case form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.support-case form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.support-case form input,
+.support-case form textarea {
+  font: inherit;
+  border: 1px solid #d7dcd5;
+  border-radius: 7px;
+  padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.support-case button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid #d7dcd5;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #fff;
+  color: inherit;
+}
+.support-case button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.support-case ul {
+  padding-left: 20px;
+  line-height: 1.7;
+}
